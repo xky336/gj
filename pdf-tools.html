@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 工具箱 - 极简工具箱</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 头部 */
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+        .back-btn {
+            text-decoration: none;
+            color: #64748b;
+            font-size: 14px;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        .header h1 { font-size: 22px; flex: 1; text-align: center; margin-right: 40px; }
+
+        /* 选项卡 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: #f1f5f9;
+            padding: 5px;
+            border-radius: 10px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* 功能区域 */
+        .tool-section { display: none; }
+        .tool-section.active { display: block; }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: #eff6ff;
+        }
+        .upload-icon { font-size: 40px; margin-bottom: 10px; }
+        
+        .file-list { margin-bottom: 20px; }
+        .file-item {
+            background: #f8fafc;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none; 
+        }
+        .action-btn:disabled { background: #94a3b8; cursor: wait; }
+        
+        /* 错误提示 */
+        .error-msg {
+            color: #ef4444;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-btn">← 返回</a>
+            <h1>PDF 工具箱</h1>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('img2pdf')">图片转 PDF</button>
+            <button class="tab-btn" onclick="switchTab('mergepdf')">PDF 合并</button>
+        </div>
+
+        <div id="section-img2pdf" class="tool-section active">
+            <div class="upload-area" onclick="document.getElementById('img-input').click()">
+                <div class="upload-icon">🖼️</div>
+                <div>点击选择图片 (支持多选)</div>
+                <div style="font-size:12px; color:#94a3b8; margin-top:5px;">JPG / PNG</div>
+            </div>
+            <input type="file" id="img-input" accept="image/png, image/jpeg" multiple style="display:none" onchange="handleImgSelect(this.files)">
+            
+            <div id="img-list" class="file-list"></div>
+            <button id="btn-img2pdf" class="action-btn" onclick="convertImgToPdf()">开始转换并下载</button>
+            <div id="error-img" class="error-msg"></div>
+        </div>
+
+        <div id="section-mergepdf" class="tool-section">
+            <div class="upload-area" onclick="document.getElementById('pdf-input').click()">
+                <div class="upload-icon">📑</div>
+                <div>点击选择 PDF 文件 (支持多选)</div>
+                <div style="font-size:12px; color:#94a3b8; margin-top:5px;">请按顺序选择</div>
+            </div>
+            <input type="file" id="pdf-input" accept=".pdf" multiple style="display:none" onchange="handlePdfSelect(this.files)">
+            
+            <div id="pdf-list" class="file-list"></div>
+            <button id="btn-merge" class="action-btn" onclick="mergePdfs()">开始合并并下载</button>
+            <div id="error-pdf" class="error-msg"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // 检查库是否加载成功
+        window.onload = function() {
+            if (typeof PDFLib === 'undefined') {
+                alert("网络连接较慢，PDF核心库加载失败。\n请尝试刷新页面，或切换网络。");
+            }
+        };
+
+        let imgFiles = [];
+        let pdfFiles = [];
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tool-section').forEach(sec => sec.classList.remove('active'));
+            
+            if (tab === 'img2pdf') {
+                document.querySelector('button[onclick="switchTab(\'img2pdf\')"]').classList.add('active');
+                document.getElementById('section-img2pdf').classList.add('active');
+            } else {
+                document.querySelector('button[onclick="switchTab(\'mergepdf\')"]').classList.add('active');
+                document.getElementById('section-mergepdf').classList.add('active');
+            }
+        }
+
+        // --- 图片处理 ---
+        function handleImgSelect(files) {
+            const list = document.getElementById('img-list');
+            const btn = document.getElementById('btn-img2pdf');
+            document.getElementById('error-img').style.display = 'none';
+
+            for (let file of files) {
+                imgFiles.push(file);
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `<span>${file.name}</span> <span style="color:#999">${(file.size/1024).toFixed(0)}KB</span>`;
+                list.appendChild(div);
+            }
+            if (imgFiles.length > 0) btn.style.display = 'block';
+        }
+
+        async function convertImgToPdf() {
+            const btn = document.getElementById('btn-img2pdf');
+            const errorBox = document.getElementById('error-img');
+            
+            if (typeof PDFLib === 'undefined') {
+                errorBox.innerText = "PDFLib 库未加载，请刷新页面重试";
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            btn.innerText = "正在转换...";
+            btn.disabled = true;
+            errorBox.style.display = 'none';
+
+            try {
+                const { PDFDocument } = PDFLib;
+                const pdfDoc = await PDFDocument.create();
+
+                for (let file of imgFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    let image;
+                    
+                    if (file.type === 'image/png') {
+                        image = await pdfDoc.embedPng(arrayBuffer);
+                    } else {
+                        image = await pdfDoc.embedJpg(arrayBuffer);
+                    }
+
+                    const { width, height } = image.scale(1);
+                    // 自动适配图片大小的页面
+                    const page = pdfDoc.addPage([width, height]);
+                    page.drawImage(image, { x: 0, y: 0, width, height });
+                }
+
+                const pdfBytes = await pdfDoc.save();
+                downloadBlob(pdfBytes, "images-merged.pdf", "application/pdf");
+                
+                btn.innerText = "转换成功！";
+                setTimeout(() => { location.reload(); }, 2000);
+
+            } catch (err) {
+                console.error(err);
+                btn.innerText = "重试";
+                btn.disabled = false;
+                errorBox.innerText = "转换失败：请确保上传的是标准 JPG/PNG 图片";
+                errorBox.style.display = 'block';
+            }
+        }
+
+        // --- PDF 合并处理 ---
+        function handlePdfSelect(files) {
+            const list = document.getElementById('pdf-list');
+            const btn = document.getElementById('btn-merge');
+            document.getElementById('error-pdf').style.display = 'none';
+
+            for (let file of files) {
+                pdfFiles.push(file);
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `<span>📑 ${file.name}</span>`;
+                list.appendChild(div);
+            }
+            if (pdfFiles.length > 0) btn.style.display = 'block';
+        }
+
+        async function mergePdfs() {
+            const btn = document.getElementById('btn-merge');
+            const errorBox = document.getElementById('error-pdf');
+
+            if (typeof PDFLib === 'undefined') {
+                errorBox.innerText = "PDFLib 库未加载，请刷新页面重试";
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            btn.innerText = "正在合并...";
+            btn.disabled = true;
+            errorBox.style.display = 'none';
+
+            try {
+                const { PDFDocument } = PDFLib;
+                const mergedPdf = await PDFDocument.create();
+
+                for (let file of pdfFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
+                }
+
+                const pdfBytes = await mergedPdf.save();
+                downloadBlob(pdfBytes, "merged-document.pdf", "application/pdf");
+
+                btn.innerText = "合并成功！";
+                setTimeout(() => { location.reload(); }, 2000);
+
+            } catch (err) {
+                console.error(err);
+                btn.innerText = "重试";
+                btn.disabled = false;
+                errorBox.innerText = "合并失败：可能是某个 PDF 文件已加密或损坏";
+                errorBox.style.display = 'block';
+            }
+        }
+
+        // --- 原生下载函数 (替代 download.js) ---
+        function downloadBlob(data, fileName, mimeType) {
+            const blob = new Blob([data], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>

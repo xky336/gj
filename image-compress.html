@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片极限压缩 - 极简工具箱</title>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 头部 */
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+        .back-btn {
+            text-decoration: none;
+            color: #64748b;
+            font-size: 14px;
+            margin-right: 15px;
+        }
+        .header h1 { font-size: 22px; flex: 1; text-align: center; margin-right: 40px; }
+
+        /* 上传区域 */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: #eff6ff;
+        }
+        .upload-icon { font-size: 48px; color: #94a3b8; margin-bottom: 10px; }
+        .upload-text { color: #64748b; font-size: 16px; }
+        .upload-sub { color: #94a3b8; font-size: 12px; margin-top: 5px; }
+
+        /* 隐藏的文件输入框 */
+        #file-input { display: none; }
+
+        /* 设置区域 */
+        .settings-area {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .setting-label { font-size: 14px; font-weight: bold; color: #475569; }
+        .range-wrapper { flex: 1; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { flex: 1; }
+
+        /* 结果列表 */
+        .result-list { margin-top: 30px; }
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+        .img-preview {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-right: 15px;
+            background: #eee;
+        }
+        .info-box { flex: 1; }
+        .file-name { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+        .size-info { font-size: 12px; color: #64748b; }
+        .size-saved { color: var(--success-color); font-weight: bold; margin-left: 5px; }
+        
+        .action-btn {
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-download { background: var(--primary-color); color: white; }
+        .btn-processing { background: #e2e8f0; color: #94a3b8; cursor: wait; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-btn">← 返回</a>
+            <h1>图片极限压缩</h1>
+        </div>
+
+        <div class="upload-area" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <div class="upload-icon">☁️</div>
+            <div class="upload-text">点击或拖拽图片到这里</div>
+            <div class="upload-sub">支持 JPG/PNG · 本地处理保护隐私</div>
+        </div>
+        <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(this.files)">
+
+        <div class="settings-area">
+            <span class="setting-label">压缩强度:</span>
+            <div class="range-wrapper">
+                <span style="font-size:12px">清晰</span>
+                <input type="range" id="quality" min="0.1" max="1" step="0.1" value="0.6">
+                <span style="font-size:12px">极小</span>
+            </div>
+            <span id="quality-val" style="font-size:14px; font-weight:bold; color:#2563eb">60%</span>
+        </div>
+
+        <div class="result-list" id="result-list">
+            </div>
+    </div>
+
+    <script>
+        // 1. 监听滑块变化
+        const qualityInput = document.getElementById('quality');
+        const qualityVal = document.getElementById('quality-val');
+        
+        qualityInput.addEventListener('input', (e) => {
+            // 显示百分比 (0.6 -> 60%)
+            // 注意：browser-image-compression 的 maxSizeMB 是控制大小，
+            // 这里我们简化逻辑，用 quality (0-1) 来近似控制压缩感
+            // 实际上库主要通过 maxSizeMB 控制，这里我们设定一个默认最大值
+            let val = Math.round((1 - e.target.value) * 100); 
+            // 这里显示反向逻辑：滑块往右（值大），代表压缩更狠（质量更低？不，通常0.1是质量差）
+            // 修正：通常 range 0.1(差) - 1.0(好)。
+            // 为了用户体验，我们定义：左边(0.1) = 极限压缩(画质差)，右边(1.0) = 轻微压缩(画质好)
+            // 显示为“质量：10%”
+            qualityVal.innerText = "质量: " + Math.round(e.target.value * 100) + "%";
+        });
+
+        // 2. 处理文件上传
+        async function handleFiles(files) {
+            const resultList = document.getElementById('result-list');
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith('image/')) continue;
+
+                // 创建一个列表项（显示正在处理）
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <div class="img-preview" style="background:#eee"></div>
+                    <div class="info-box">
+                        <div class="file-name">${file.name}</div>
+                        <div class="size-info">原始: ${(file.size/1024).toFixed(1)}KB <span class="size-saved">处理中...</span></div>
+                    </div>
+                    <button class="action-btn btn-processing">压缩中</button>
+                `;
+                resultList.insertBefore(item, resultList.firstChild);
+
+                // 开始压缩
+                try {
+                    const options = {
+                        maxSizeMB: 1, // 限制最大1MB，可调整
+                        maxWidthOrHeight: 1920, // 限制最大尺寸
+                        useWebWorker: true,
+                        initialQuality: parseFloat(qualityInput.value) // 使用滑块的值
+                    };
+
+                    const compressedFile = await imageCompression(file, options);
+                    
+                    // 计算节省比例
+                    const saved = ((file.size - compressedFile.size) / file.size * 100).toFixed(0);
+                    
+                    // 生成预览图
+                    const previewUrl = URL.createObjectURL(compressedFile);
+                    
+                    // 更新列表项状态
+                    item.innerHTML = `
+                        <img src="${previewUrl}" class="img-preview">
+                        <div class="info-box">
+                            <div class="file-name">${file.name}</div>
+                            <div class="size-info">
+                                ${(file.size/1024).toFixed(1)}KB -> ${(compressedFile.size/1024).toFixed(1)}KB
+                                <span class="size-saved">↓${saved}%</span>
+                            </div>
+                        </div>
+                        <a href="${previewUrl}" download="compressed_${file.name}" class="action-btn btn-download">下载</a>
+                    `;
+
+                } catch (error) {
+                    console.error(error);
+                    item.innerHTML += `<div style="color:red;margin-left:10px">失败</div>`;
+                }
+            }
+            
+            // 清空input防止重复上传无法触发onchange
+            document.getElementById('file-input').value = '';
+        }
+
+        // 3. 拖拽支持
+        const dropZone = document.getElementById('drop-zone');
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#2563eb';
+            dropZone.style.backgroundColor = '#eff6ff';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#e2e8f0';
+            dropZone.style.backgroundColor = '#f8fafc';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#e2e8f0';
+            dropZone.style.backgroundColor = '#f8fafc';
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+    </script>
+</body>
+</html>

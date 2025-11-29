@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极速二维码生成 - 极简工具箱</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 头部 */
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+        .back-btn {
+            text-decoration: none;
+            color: #64748b;
+            font-size: 14px;
+            margin-right: 15px;
+        }
+        .header h1 { font-size: 20px; flex: 1; text-align: center; margin-right: 40px; }
+
+        /* 输入区 */
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #475569;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+        textarea:focus { border-color: var(--primary-color); }
+
+        /* 颜色选择 */
+        .color-row {
+            display: flex;
+            gap: 20px;
+        }
+        .color-input {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        input[type="color"] {
+            border: none;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            background: none;
+        }
+
+        /* 按钮 */
+        .btn-group { margin-top: 20px; display: flex; gap: 10px; }
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-outline { background: #eff6ff; color: var(--primary-color); border: 1px solid #dbeafe; }
+        .btn:active { opacity: 0.8; }
+
+        /* 结果展示区 */
+        #qrcode-container {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 2px dashed #cbd5e1;
+            min-height: 200px;
+        }
+        
+        /* 隐藏生成的图片自带样式，由我们控制 */
+        #qrcode img {
+            max-width: 100%;
+            border: 5px solid white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-btn">← 返回</a>
+            <h1>二维码生成器</h1>
+        </div>
+
+        <div class="form-group">
+            <label>输入网址或文字</label>
+            <textarea id="text-input" placeholder="在此粘贴链接（如 https://www.baidu.com）或输入任意文本..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>自定义颜色</label>
+            <div class="color-row">
+                <div class="color-input">
+                    <span>前景色</span>
+                    <input type="color" id="color-dark" value="#000000">
+                </div>
+                <div class="color-input">
+                    <span>背景色</span>
+                    <input type="color" id="color-light" value="#ffffff">
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="generateQRCode()">立即生成</button>
+            <button class="btn btn-outline" onclick="downloadQRCode()" id="dl-btn" disabled>下载图片</button>
+        </div>
+
+        <div id="qrcode-container">
+            <div id="qrcode" style="color:#94a3b8">（二维码将显示在这里）</div>
+        </div>
+    </div>
+
+    <script>
+        let qrcodeObj = null; // 存储二维码对象
+
+        function generateQRCode() {
+            const text = document.getElementById("text-input").value;
+            const colorDark = document.getElementById("color-dark").value;
+            const colorLight = document.getElementById("color-light").value;
+            const container = document.getElementById("qrcode");
+            const dlBtn = document.getElementById("dl-btn");
+
+            if (!text.trim()) {
+                alert("请输入内容后再生成！");
+                return;
+            }
+
+            // 清空旧的
+            container.innerHTML = "";
+            container.style.color = "inherit"; // 恢复颜色
+
+            // 生成新的
+            try {
+                qrcodeObj = new QRCode(container, {
+                    text: text,
+                    width: 200,
+                    height: 200,
+                    colorDark : colorDark,
+                    colorLight : colorLight,
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+                
+                // 启用下载按钮
+                dlBtn.disabled = false;
+                dlBtn.innerText = "下载图片";
+            } catch (e) {
+                alert("生成失败，请检查输入内容。");
+            }
+        }
+
+        function downloadQRCode() {
+            const img = document.querySelector("#qrcode img");
+            if (img && img.src) {
+                const link = document.createElement("a");
+                link.href = img.src;
+                link.download = "qrcode_" + new Date().getTime() + ".png";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert("请先生成二维码！");
+            }
+        }
+    </script>
+
+</body>
+</html>
