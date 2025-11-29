@@ -82,7 +82,7 @@
             /* 响应式魔法：自动适应屏幕宽度，最小宽度300px */
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 25px;
-            margin-bottom: 60px;
+            margin-bottom: 40px;
         }
 
         .card {
@@ -133,6 +133,27 @@
         }
         .try-btn::after { content: '→'; transition: margin 0.2s; }
         .card:hover .try-btn::after { margin-left: 5px; }
+
+        /* --- 正在开发中提示 --- */
+        .coming-soon {
+            text-align: center;
+            padding: 40px 20px;
+            background: #f1f5f9;
+            border-radius: 16px;
+            color: #64748b;
+            margin-bottom: 60px;
+            border: 1px dashed #cbd5e1;
+        }
+        .coming-soon h4 { margin-bottom: 10px; font-size: 18px; color: #475569; }
+        .coming-soon span {
+            display: inline-block;
+            background: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 13px;
+            border: 1px solid #e2e8f0;
+        }
 
         /* --- 底部 --- */
         footer {
@@ -196,7 +217,6 @@
                 <div class="try-btn">立即使用</div>
             </div>
 
-
             <div class="card" onclick="window.location.href='mortgage.html'">
                 <div class="icon-box">🏠</div>
                 <h3>房贷计算器 2025</h3>
@@ -205,6 +225,19 @@
             </div>
 
         </div>
+
+        <div class="coming-soon">
+            <h4>🚀 更多黑科技正在路上...</h4>
+            <div style="margin-top: 15px;">
+                <span>文字转语音</span>
+                <span>视频去水印</span>
+                <span>证件照制作</span>
+                <span>AI写作助手</span>
+                <span>汇率换算</span>
+            </div>
+            <p style="font-size: 12px; margin-top: 15px;">敬请期待！</p>
+        </div>
+
     </div>
 
     <footer>
